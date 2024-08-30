@@ -117,28 +117,16 @@ def map_mon_json_response(json_response):
     for node in parsed_json[0]["output"]["striimClusterNodes"]:
         node_data = node #[0]
 
-        if node_data["entityType"] == "AGENT":
-            striim_cluster_nodes.append(
-                StriimClusterNode(
-                    node_data["entityType"],
-                    node_data["fullName"],
-                    node_data["version"],
-                    node_data["freeMemory"],
-                    node_data["cpuRate"],
-                    node_data["uptime"]
-                )
+        striim_cluster_nodes.append(
+            StriimClusterNode(
+                node_data["entityType"],
+                node_data["name"],
+                node_data["version"],
+                node_data["freeMemory"],
+                node_data["cpuRate"],
+                node_data["uptime"]
             )
-        else:
-            striim_cluster_nodes.append(
-                StriimClusterNode(
-                    node_data["entityType"],
-                    node_data["name"],
-                    node_data["version"],
-                    node_data["freeMemory"],
-                    node_data["cpuRate"],
-                    node_data["uptime"]
-                )
-            )
+        )
 
     elasticsearch_nodes = []
 
