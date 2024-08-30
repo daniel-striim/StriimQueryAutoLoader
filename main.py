@@ -120,7 +120,7 @@ def map_mon_json_response(json_response):
         striim_cluster_nodes.append(
             StriimClusterNode(
                 node_data["entityType"],
-                node_data["name"],
+                node_data.get("name", node_data.get("fullName")),
                 node_data["version"],
                 node_data["freeMemory"],
                 node_data["cpuRate"],
