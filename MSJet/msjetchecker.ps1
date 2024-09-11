@@ -37,7 +37,7 @@ if ($nodeType -eq "") {
 
 # Agent-specific checks
 if ($nodeType -eq "A") {
-	Write-Host "[Config ] Running Agent-Specific Tests for configuration:"
+	Write-Host "[Config ] -> AGENT -> Specific Tests for configuration:"
     $agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
 
     # Check if agent.conf exists
@@ -85,6 +85,7 @@ if ($nodeType -eq "A") {
 
 # Node-specific checks
 if ($nodeType -eq "N") {
+	Write-Host "[Config ] -> NODE -> Specific Tests for configuration:"
     $startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
 
     # Check if startUp.properties exists
@@ -304,11 +305,16 @@ function DownloadAndInstallSoftware {
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 		# Resolve the redirection link to get the actual download URL
-        $response = Invoke-WebRequest -Uri $downloadUrl -MaximumRedirection 5 # Allow up to 5 redirections
-        $actualDownloadUrl = $response.BaseResponseUri.AbsoluteUri
+		if ($downloadUrl -eq "https://aka.ms/vs/16/release/14.29.30133/VC_Redist.x64.exe") {
+			$downloadPath = -join ($downloadDir, "\VC_Redist.x64.exe" )
+		} else {
+			$downloadPath = -join ($downloadDir, "\msoledbsql.msi" )
+		}
+		Write-Host "[Softwre] downloadPath $downloadPath"
+        $response = Invoke-WebRequest -Uri $downloadUrl -MaximumRedirection 5 -OutFile $downloadPath # Allow up to 5 redirections
+		
+		Write-Host "[Softwre] downloadUrl $downloadUrl"
 
-        $downloadPath = -join ($downloadDir, "\", $actualDownloadUrl.Split("/")[-1])
-        Invoke-WebRequest -Uri $actualDownloadUrl -OutFile $downloadPath
         Write-Host "[Softwre] Success: $softwareName installer downloaded to $downloadPath. Please run it to install."
     }
 }
