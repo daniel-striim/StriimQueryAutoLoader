@@ -2,12 +2,12 @@
 $striimInstallPath = Get-Location
 $downloadDir = -join ($striimInstallPath, "\downloads")
 
-# Create downloads folder if it doesn't exist
+# Step 1: Create downloads folder if it doesn't exist
 if (-not (Test-Path $downloadDir)) {
     New-Item -ItemType Directory -Force -Path $downloadDir
 }
 
-# Check for agent.conf or startUp.properties to determine node type
+# Step 2: Check for agent.conf or startUp.properties to determine node type
 $agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
 $startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
 
@@ -36,30 +36,52 @@ if ($nodeType -eq "") {
 Write-Host "Striim Install Path set to: $striimInstallPath"
 
 # Agent-specific checks
+# Agent-specific checks
 if ($nodeType -eq "A") {
     $agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
 
     # Check if agent.conf exists
     if (Test-Path $agentConfPath) {
-        $agentConf = Get-Content $agentConfPath
+        $agentConfLines = Get-Content $agentConfPath
 
-        # Check for striim.cluster.clusterName
-        if ($agentConf -match "striim\.cluster\.clusterName=") {
-            Write-Host "'striim.cluster.clusterName' found in agent.conf"
-        } else {
-            Write-Host "'striim.cluster.clusterName' not found in agent.conf. Please provide a value."
+        $clusterNameFound = $false
+        $serverNodeAddressFound = $false
+
+        foreach ($line in $agentConfLines) {
+            # Check for striim.cluster.clusterName with a non-empty value
+            if ($line -match "striim\.cluster\.clusterName\s*=\s*(.*)") {
+                $clusterNameValue = $matches[1]
+                if ($clusterNameValue -ne "") {
+                    Write-Host "'striim.cluster.clusterName' found in agent.conf with value: $clusterNameValue"
+                    $clusterNameFound = $true
+                } else {
+                    Write-Host "'striim.cluster.clusterName' found in agent.conf but has no value. Please provide a value."
+                }
+            }
+
+            # Check for striim.node.servernode.address with a non-empty value
+            if ($line -match "striim\.node\.servernode\.address\s*=\s*(.*)") {
+                $serverNodeAddressValue = $matches[1]
+                if ($serverNodeAddressValue -ne "") {
+                    Write-Host "'striim.node.servernode.address' found in agent.conf with value: $serverNodeAddressValue"
+                    $serverNodeAddressFound = $true
+                } else {
+                    Write-Host "'striim.node.servernode.address' found in agent.conf but has no value. Please provide a value."
+                }
+            }
         }
 
-        # Check for striim.node.servernode.address
-        if ($agentConf -match "striim\.node\.servernode\.address=") {
-            Write-Host "'striim.node.servernode.address' found in agent.conf"
-        } else {
+        # Check if properties were found at all
+        if (-not $clusterNameFound) {
+            Write-Host "'striim.cluster.clusterName' not found in agent.conf. Please provide a value."
+        }
+        if (-not $serverNodeAddressFound) {
             Write-Host "'striim.node.servernode.address' not found in agent.conf. Please provide a value."
         }
     } else {
         Write-Host "agent.conf not found in $($striimInstallPath)\conf"
     }
-} 
+}
 
 # Node-specific checks
 if ($nodeType -eq "N") {
@@ -69,11 +91,16 @@ if ($nodeType -eq "N") {
     if (Test-Path $startUpPropsPath) {
         $startUpProps = Get-Content $startUpPropsPath
 
-        # Check for required values
+        # Check for required values with non-empty values
         $requiredProps = "CompanyName", "LicenceKey", "ProductKey", "WAClusterName"
         foreach ($prop in $requiredProps) {
-            if ($startUpProps -match "$prop=") {
-                Write-Host "'$prop' found in startUp.properties"
+            if ($startUpProps -match "$prop\s*=\s*(.*)") {
+                $propValue = $matches[1]
+                if ($propValue -ne "") {
+                    Write-Host "'$prop' found in startUp.properties with value: $propValue"
+                } else {
+                    Write-Host "'$prop' found in startUp.properties but has no value. Please provide a value."
+                }
             } else {
                 Write-Host "'$prop' not found in startUp.properties. Please provide a value."
             }
@@ -81,7 +108,7 @@ if ($nodeType -eq "N") {
     } else {
         Write-Host "startUp.properties not found in $($striimInstallPath)\conf"
     }
-} 
+}
 
 # Check if Striim lib directory is in PATH
 $striimLibPath = -join ($striimInstallPath, "\lib")
@@ -113,12 +140,12 @@ foreach ($dll in $requiredDlls) {
             }
 
 			$finalPath = -join ($striimLibPath, "\Dlls\", $dll)
-			
+
 			if (-not (Test-Path $finalPath)) {
-				
+
 				$downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
 				Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
-				
+
 				if ($downloadUrl.EndsWith(".zip")) {
 					Expand-Archive -Path $downloadPath -DestinationPath $striimLibPath -Force
 					Copy-Item $finalPath $striimLibPath
@@ -134,6 +161,7 @@ foreach ($dll in $requiredDlls) {
     }
 }
 
+# Determine Java Version
 if (Get-Command java -ErrorAction SilentlyContinue) {
     $javaVersionOutput = java -version 2>&1 | Select-String -Pattern 'java version "(.*)"'
 	Write-Host "Java version: $javaVersionOutput"
@@ -152,7 +180,7 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
             }
         }
     } else {
-        Write-Host "Could not determine Java version." 
+        Write-Host "Could not determine Java version."
     }
 } else {
     # Offer to download Java 8
@@ -163,8 +191,9 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
         Invoke-WebRequest -Uri $javaDownloadUrl -OutFile $javaDownloadPath
         Write-Host "Java 8 installer downloaded to $javaDownloadPath. Please install it."
     }
-} 
+}
 
+# Determine if Integrated Security is needed
 $sqljdbcAuthDllPath = "C:\Windows\System32\sqljdbc_auth.dll"
 if (Test-Path $sqljdbcAuthDllPath) {
     Write-Host "sqljdbc_auth.dll found in C:\Windows\System32"
@@ -193,10 +222,11 @@ if (Test-Path $sqljdbcAuthDllPath) {
     }
 }
 
+# Check Software Requirements
 Write-Host "Checking for installed requirements..."
 
 # Get the list of installed software once
-$installedSoftwareList = Get-WmiObject -Class Win32_Product 
+$installedSoftwareList = Get-WmiObject -Class Win32_Product
 
 Write-Host "Checking for installed requirements...Software list gathered."
 
@@ -207,10 +237,10 @@ function CheckAndDownloadSoftware {
         [string]$downloadUrl
     )
 
-    $matchingSoftware = $installedSoftwareList | 
-                        Where-Object { 
-                            $_.Name -like "*$softwareName*" 
-                        } 
+    $matchingSoftware = $installedSoftwareList |
+                        Where-Object {
+                            $_.Name -like "*$softwareName*"
+                        }
 
     if ($matchingSoftware) {
         foreach ($software in $matchingSoftware) {
@@ -222,7 +252,7 @@ function CheckAndDownloadSoftware {
             }
         }
     } else {
-        Write-Host "$softwareName not found." 
+        Write-Host "$softwareName not found."
         DownloadAndInstallSoftware $softwareName $downloadUrl
     }
 }
@@ -237,7 +267,7 @@ function DownloadAndInstallSoftware {
     $downloadChoice = Read-Host "  Do you want to download and install $softwareName? (Y/N)"
     if ($downloadChoice.ToUpper() -eq "Y") {
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-		
+
         $downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
         Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
         Write-Host "$softwareName installer downloaded to $downloadPath. Please run it to install."
@@ -250,7 +280,6 @@ CheckAndDownloadSoftware "Microsoft Visual C++ 2019 X64 Minimum Runtime" "14.28.
 # Check for Microsoft OLE DB Driver for SQL Server
 CheckAndDownloadSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0" "https://go.microsoft.com/fwlink/?linkid=2119554"
 
-
 # Check if Striim service is installed
 $runAsService = Read-Host "Plan to run Striim as a service? (Y/N)"
 if ($runAsService.ToUpper() -eq "Y") {
@@ -258,14 +287,14 @@ if ($runAsService.ToUpper() -eq "Y") {
         Write-Host "Striim service is installed."
     } else {
         # Check for windowsService/windowsAgent folder
-        if ($nodeType -eq "A") { 
+        if ($nodeType -eq "A") {
 			$serviceConfigFolder = -join ($striimInstallPath, "\conf\windowsAgent")
-		} else { 
+		} else {
 			$serviceConfigFolder = -join ($striimInstallPath, "\conf\windowsService")
 		}
-		
+
 		Write-Host "Service path searched: $serviceConfigFolder"
-		
+
 		if (Test-Path $serviceConfigFolder) {
             # Check if the folder is empty
             if ((Get-ChildItem $serviceConfigFolder | Measure-Object).Count -eq 0) {
@@ -275,7 +304,7 @@ if ($runAsService.ToUpper() -eq "Y") {
             } else {
                 Write-Host "Striim service configuration found in $serviceConfigFolder. It is not empty, so it will not be deleted."
             }
-        } 
+        }
 
         if (-not (Test-Path $serviceConfigFolder)) {
             # Find Striim version
@@ -293,10 +322,10 @@ if ($runAsService.ToUpper() -eq "Y") {
                     }
 
 					[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                    
+
 					$downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
                     Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
-                    
+
 					# Extract to a temporary directory to avoid nested folders
 					$tempExtractPath = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
 					Expand-Archive -Path $downloadPath -DestinationPath $tempExtractPath
@@ -318,7 +347,7 @@ if ($runAsService.ToUpper() -eq "Y") {
         } else {
             Write-Host "Striim service configuration found in $serviceConfigFolder"
         }
-		
+
 		# Ask if user wants to set up the service
 		$setupService = Read-Host "Do you want to set up the Striim service now? (Y/N)"
 		if ($setupService.ToUpper() -eq "Y") {
