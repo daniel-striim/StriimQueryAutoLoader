@@ -129,7 +129,18 @@ Write-Host "[Config ] Striim Lib Path set to: $striimLibPath"
 if ($env:Path -split ";" -contains $striimLibPath) {
     Write-Host "[Config ] Success: Striim lib directory found in PATH."
 } else {
-    Write-Host "[Config ] Fail***: Striim lib directory not found in PATH. Please add it."
+    Write-Host "[Config ] Fail***: Striim lib directory not found in PATH."
+	$addToPathChoice = Read-Host "[Config ]  Do you want to add it to the system PATH? (Y/N)"
+    if ($addToPathChoice.ToUpper() -eq "Y") {
+        # Add Striim lib directory to PATH
+        $newPath = $env:Path + ";" + $striimLibPath
+        [Environment]::SetEnvironmentVariable("Path", $newPath, "Machine") # Set for all users
+        
+        # Refresh the current session's environment variables
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+
+        Write-Host "[Config ] Success: Striim lib directory added to PATH."
+    }
 }
 
 # Check for required DLLs
@@ -156,7 +167,7 @@ foreach ($dll in $requiredDlls) {
 
 			if (-not (Test-Path $finalPath)) {
 
-				$downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
+				$downloadPath = -join ($downloadDir,  "\", $downloadUrl.Split("/")[-1])
 				Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
 
 				if ($downloadUrl.EndsWith(".zip")) {
@@ -198,7 +209,7 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
             $downloadJavaChoice = Read-Host "  Java 8 not found. Download it? (Y/N)"
             if ($downloadJavaChoice.ToUpper() -eq "Y") {
                 $javaDownloadUrl = "https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u422-b05/openlogic-openjdk-8u422-b05-windows-x64.msi"
-                $javaDownloadPath = $downloadDir + "\" + $javaDownloadUrl.Split("/")[-1]
+                $javaDownloadPath = -join ($downloadDir,  "\", $javaDownloadUrl.Split("/")[-1])
                 Invoke-WebRequest -Uri $javaDownloadUrl -OutFile $javaDownloadPath
                 Write-Host "[Java   ] Success: Java 8 installer downloaded to $javaDownloadPath. Please install it."
             }
@@ -211,7 +222,7 @@ if (Get-Command java -ErrorAction SilentlyContinue) {
     $downloadJavaChoice = Read-Host "[Java   ] Java not found. Download Java 8? (Y/N)"
     if ($downloadJavaChoice.ToUpper() -eq "Y") {
         $javaDownloadUrl = "https://builds.openlogic.com/downloadJDK/openlogic-openjdk/8u422-b05/openlogic-openjdk-8u422-b05-windows-x64.msi"
-        $javaDownloadPath = $downloadDir + "\" + $javaDownloadUrl.Split("/")[-1]
+        $javaDownloadPath = -join ($downloadDir, "\", $javaDownloadUrl.Split("/")[-1])
         Invoke-WebRequest -Uri $javaDownloadUrl -OutFile $javaDownloadPath
         Write-Host "[Java   ] Fail***: Java 8 installer downloaded to $javaDownloadPath. Please install it."
     }
@@ -237,7 +248,7 @@ if (Test-Path $sqljdbcAuthDllPath) {
             $downloadChoice = Read-Host "[Int Sec] Integrated Security:  sqljdbc_auth.dll not found. Download it? (Y/N)"
             if ($downloadChoice.ToUpper() -eq "Y") {
                 $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/main/MSJet/sqljdbc_auth.dll" # Update with the correct URL if needed
-                $downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
+                $downloadPath = -join ($downloadDir, "\", $downloadUrl.Split("/")[-1])
                 Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
                 Copy-Item $downloadPath $sqljdbcAuthDllPath
                 Write-Host "[Int Sec] Success: Integrated Security: sqljdbc_auth.dll downloaded and copied to C:\Windows\System32"
@@ -292,8 +303,12 @@ function DownloadAndInstallSoftware {
     if ($downloadChoice.ToUpper() -eq "Y") {
 		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-        $downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
-        Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+		# Resolve the redirection link to get the actual download URL
+        $response = Invoke-WebRequest -Uri $downloadUrl -MaximumRedirection 5 # Allow up to 5 redirections
+        $actualDownloadUrl = $response.BaseResponseUri.AbsoluteUri
+
+        $downloadPath = -join ($downloadDir, "\", $actualDownloadUrl.Split("/")[-1])
+        Invoke-WebRequest -Uri $actualDownloadUrl -OutFile $downloadPath
         Write-Host "[Softwre] Success: $softwareName installer downloaded to $downloadPath. Please run it to install."
     }
 }
@@ -347,7 +362,7 @@ if ($runAsService.ToUpper() -eq "Y") {
 
 					[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-					$downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
+					$downloadPath = -join ($downloadDir, "\", $downloadUrl.Split("/")[-1])
                     Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
 
 					# Extract to a temporary directory to avoid nested folders
