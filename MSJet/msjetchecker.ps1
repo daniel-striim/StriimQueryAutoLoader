@@ -404,7 +404,13 @@ if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
 		$setupService = Read-Host "[Service]  Do you want to set up the Striim service now? (Y/N)"
 		if ($setupService.ToUpper() -eq "Y") {
 			# Execute setup script (assuming it's in the extracted folder)
-			$setupScriptPath = Join-Path $serviceConfigFolder "setupWindowsAgent.ps1"
+			if ($nodeType -eq "A") {
+				$setupScriptPath = Join-Path $serviceConfigFolder "setupWindowsAgent.ps1"
+			} else {
+				$setupScriptPath = Join-Path $serviceConfigFolder "setupWindowsService.ps1"
+			}
+			
+			
 			Write-Host "[Service] Run the service setup located here: $setupScriptPath"
 		}
 
