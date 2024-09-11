@@ -13,10 +13,10 @@ $startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
 
 if (Test-Path $agentConfPath) {
     $nodeType = "A"  # Agent
-    Write-Host "[Envrnmt] -> AGENT Environment based on agent.conf"
+    Write-Host "[Envrnmt]       -> AGENT Environment based on agent.conf"
 } elseif (Test-Path $startUpPropsPath) {
     $nodeType = "N"  # Node
-    Write-Host "[Envrnmt] -> NODE environment based on startUp.properties"
+    Write-Host "[Envrnmt]       -> NODE environment based on startUp.properties"
 } else {
     # If neither file is found, ask the user
     $nodeType = Read-Host "[Envrnmt]  Is this Agent (default) or Node? (Enter 'A' for Agent or 'N' for Node)"
@@ -37,7 +37,7 @@ if ($nodeType -eq "") {
 
 # Agent-specific checks
 if ($nodeType -eq "A") {
-	Write-Host "[Config ] -> AGENT -> Specific Tests for configuration:"
+	Write-Host "[Config ]       -> AGENT -> Specific Tests for configuration:"
     $agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
 
     # Check if agent.conf exists
@@ -85,7 +85,7 @@ if ($nodeType -eq "A") {
 
 # Node-specific checks
 if ($nodeType -eq "N") {
-	Write-Host "[Config ] -> NODE -> Specific Tests for configuration:"
+	Write-Host "[Config ]       -> NODE -> Specific Tests for configuration:"
     $startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
 
     # Check if startUp.properties exists
@@ -126,7 +126,7 @@ if ($nodeType -eq "N") {
 
 # Check if Striim lib directory is in PATH
 $striimLibPath = -join ($striimInstallPath, "\lib")
-Write-Host "[Config ] Striim Lib Path set to: $striimLibPath"
+Write-Host "[Config ]       -> Striim Lib Path set to: $striimLibPath"
 if ($env:Path -split ";" -contains $striimLibPath) {
     Write-Host "[Config ] Success: Striim lib directory found in PATH."
 } else {
@@ -326,13 +326,20 @@ CheckAndDownloadSoftware "Microsoft Visual C++ 2019 X64 Minimum Runtime" "14.28.
 CheckAndDownloadSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0" "https://go.microsoft.com/fwlink/?linkid=2119554"
 
 # Check if Striim service is installed
-$runAsService = Read-Host "[Service] Plan to run Striim as a service? (Y/N)"
-if ($runAsService.ToUpper() -eq "Y") {
-    if (Get-Service Striim -ErrorAction SilentlyContinue) {
+if ($nodeType -eq "A") {
+	$serviceName = "Striim Agent"
+} else {
+	$serviceName = "Striim"
+}
+if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
         Write-Host "[Service] Success: Striim service is installed."
-    } else {
-        # Check for windowsService/windowsAgent folder
-        if ($nodeType -eq "A") {
+		Write-Host "[Service] * Note : If your Striim service is using Integrated Security, you may need to change the user the service runs as."
+} else {
+	$runAsService = Read-Host "[Service] Plan to run Striim as a service? (Y/N)"
+	if ($runAsService.ToUpper() -eq "Y") {
+	
+		# Check for windowsService/windowsAgent folder
+		if ($nodeType -eq "A") {
 			$serviceConfigFolder = -join ($striimInstallPath, "\conf\windowsAgent")
 		} else {
 			$serviceConfigFolder = -join ($striimInstallPath, "\conf\windowsService")
@@ -341,35 +348,35 @@ if ($runAsService.ToUpper() -eq "Y") {
 		Write-Host "[Service] Service path searched: $serviceConfigFolder"
 
 		if (Test-Path $serviceConfigFolder) {
-            # Check if the folder is empty
-            if ((Get-ChildItem $serviceConfigFolder | Measure-Object).Count -eq 0) {
-                # Delete the empty folder
-                Remove-Item $serviceConfigFolder -Recurse -Force
-                Write-Host "[Service] Success Empty $serviceConfigFolder deleted."
-            } else {
-                Write-Host "[Service] Success: Striim service configuration found in $serviceConfigFolder. It is not empty, so it will not be deleted."
-            }
-        }
+			# Check if the folder is empty
+			if ((Get-ChildItem $serviceConfigFolder | Measure-Object).Count -eq 0) {
+				# Delete the empty folder
+				Remove-Item $serviceConfigFolder -Recurse -Force
+				Write-Host "[Service] Success Empty $serviceConfigFolder deleted."
+			} else {
+				Write-Host "[Service] Success: Striim service configuration found in $serviceConfigFolder. It is not empty, so it will not be deleted."
+			}
+		}
 
-        if (-not (Test-Path $serviceConfigFolder)) {
-            # Find Striim version
-            $platformJar = Get-ChildItem $striimInstallPath\lib -Filter "Platform-*.jar" | Select-Object -First 1
-            if ($platformJar) {
-                $versionMatch = $platformJar.Name -match "Platform-(.*)\.jar"
-                if ($versionMatch) {
-                    $striimVersion = $matches[1]
+		if (-not (Test-Path $serviceConfigFolder)) {
+			# Find Striim version
+			$platformJar = Get-ChildItem $striimInstallPath\lib -Filter "Platform-*.jar" | Select-Object -First 1
+			if ($platformJar) {
+				$versionMatch = $platformJar.Name -match "Platform-(.*)\.jar"
+				if ($versionMatch) {
+					$striimVersion = $matches[1]
 
-                    # Download and extract service/agent file
-                    $downloadUrl = if ($nodeType -eq "A") {
-                        "https://striim-downloads.striim.com/Releases/$striimVersion/Striim_windowsAgent_$striimVersion.zip"
-                    } else {
-                        "https://striim-downloads.striim.com/Releases/$striimVersion/Striim_windowsService_$striimVersion.zip"
-                    }
+					# Download and extract service/agent file
+					$downloadUrl = if ($nodeType -eq "A") {
+						"https://striim-downloads.striim.com/Releases/$striimVersion/Striim_windowsAgent_$striimVersion.zip"
+					} else {
+						"https://striim-downloads.striim.com/Releases/$striimVersion/Striim_windowsService_$striimVersion.zip"
+					}
 
 					[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 					$downloadPath = -join ($downloadDir, "\", $downloadUrl.Split("/")[-1])
-                    Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+					Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
 
 					# Extract to a temporary directory to avoid nested folders
 					$tempExtractPath = Join-Path $env:TEMP ([Guid]::NewGuid().ToString())
@@ -383,15 +390,15 @@ if ($runAsService.ToUpper() -eq "Y") {
 					Remove-Item $tempExtractPath -Recurse -Force
 					Remove-Item $downloadPath -Force
 
-                } else {
-                    Write-Host "[Service] Fail***: Could not determine Striim version from Platform jar file."
-                }
-            } else {
-                Write-Host "[Service] Fail***: Could not find Platform jar file in $striimInstallPath\lib to determine Striim version."
-            }
-        } else {
-            Write-Host "[Service] Fail***: Striim service configuration found in $serviceConfigFolder"
-        }
+				} else {
+					Write-Host "[Service] Fail***: Could not determine Striim version from Platform jar file."
+				}
+			} else {
+				Write-Host "[Service] Fail***: Could not find Platform jar file in $striimInstallPath\lib to determine Striim version."
+			}
+		} else {
+			Write-Host "[Service] Fail***: Striim service configuration found in $serviceConfigFolder"
+		}
 
 		# Ask if user wants to set up the service
 		$setupService = Read-Host "[Service]  Do you want to set up the Striim service now? (Y/N)"
@@ -400,6 +407,7 @@ if ($runAsService.ToUpper() -eq "Y") {
 			$setupScriptPath = Join-Path $serviceConfigFolder "setupWindowsAgent.ps1"
 			Write-Host "[Service] Run the service setup located here: $setupScriptPath"
 		}
-    }
-	Write-Host "[Service] Note: If your Striim service is using Integrated Security, you may need to change the user the service runs as."
+
+		Write-Host "[Service] * Note : If your Striim service is using Integrated Security, you may need to change the user the service runs as."
+	}
 }
