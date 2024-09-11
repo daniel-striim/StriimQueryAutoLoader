@@ -89,19 +89,32 @@ if ($nodeType -eq "N") {
 
     # Check if startUp.properties exists
     if (Test-Path $startUpPropsPath) {
-        $startUpProps = Get-Content $startUpPropsPath
+        $startUpPropsLines = Get-Content $startUpPropsPath
 
-        # Check for required values with non-empty values
         $requiredProps = "CompanyName", "LicenceKey", "ProductKey", "WAClusterName"
+        $propsFound = @{}  # Dictionary to track found properties
         foreach ($prop in $requiredProps) {
-            if ($startUpProps -match "$prop\s*=\s*(.*)") {
-                $propValue = $matches[1]
-                if ($propValue -ne "") {
-                    Write-Host "'$prop' found in startUp.properties with value: $propValue"
-                } else {
-                    Write-Host "'$prop' found in startUp.properties but has no value. Please provide a value."
+            $propsFound[$prop] = $false
+        }
+
+        foreach ($line in $startUpPropsLines) {
+            foreach ($prop in $requiredProps) {
+                if ($line -match "$prop\s*=\s*(.*)") {
+                    $propValue = $matches[1]
+                    if ($propValue -ne "") {
+                        Write-Host "'$prop' found in startUp.properties with value: $propValue"
+                        $propsFound[$prop] = $true
+                    } else {
+                        Write-Host "'$prop' found in startUp.properties but has no value. Please provide a value."
+                    }
+                    break  # Exit the inner loop once a property is found on a line
                 }
-            } else {
+            }
+        }
+
+        # Check if all required properties were found
+        foreach ($prop in $requiredProps) {
+            if (-not $propsFound[$prop]) {
                 Write-Host "'$prop' not found in startUp.properties. Please provide a value."
             }
         }
