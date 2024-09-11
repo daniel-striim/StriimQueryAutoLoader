@@ -112,14 +112,22 @@ foreach ($dll in $requiredDlls) {
                 $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/main/MSJet/Dlls.zip"
             }
 
-            $downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
-
-            if ($downloadUrl.EndsWith(".zip")) {
-                Expand-Archive -Path $downloadPath -DestinationPath $striimLibPath
-            } else {
-                Copy-Item $downloadPath $striimLibPath
-            }
+			$finalPath = -join ($striimLibPath, "\Dlls\", $dll)
+			
+			if (-not (Test-Path $finalPath)) {
+				
+				$downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
+				Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+				
+				if ($downloadUrl.EndsWith(".zip")) {
+					Expand-Archive -Path $downloadPath -DestinationPath $striimLibPath -Force
+					Copy-Item $finalPath $striimLibPath
+				} else {
+					Copy-Item $downloadPath $striimLibPath
+				}
+			} else {
+				Copy-Item $finalPath $striimLibPath
+			}
 
             Write-Host "$dll downloaded and extracted to $striimLibPath"
         }
@@ -315,8 +323,8 @@ if ($runAsService.ToUpper() -eq "Y") {
 		$setupService = Read-Host "Do you want to set up the Striim service now? (Y/N)"
 		if ($setupService.ToUpper() -eq "Y") {
 			# Execute setup script (assuming it's in the extracted folder)
-			$output = & $serviceConfigFolder\setupWindowsAgent.ps1
-			Write-Host $output
+			$setupScriptPath = Join-Path $serviceConfigFolder "setupWindowsAgent.ps1"
+			Write-Host "Run the service setup located here: $setupScriptPath"
 		}
     }
 	Write-Host "Note: If your Striim service is using Integrated Security, you may need to change the user the service runs as."
