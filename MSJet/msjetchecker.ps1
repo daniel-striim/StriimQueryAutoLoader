@@ -2,16 +2,37 @@
 $striimInstallPath = Get-Location
 $downloadDir = -join ($striimInstallPath, "\downloads")
 
-# Ask user if this is Agent or Node
-$nodeType = Read-Host "Is this Agent (default) or Node? (Enter 'A' for Agent or 'N' for Node)"
-if ($nodeType -eq "") { $nodeType = "A" }
-$nodeType = $nodeType.ToUpper()
-
-# Ask user for Striim install path or use default
-$striimInstallPathInput = Read-Host "Provide Striim install path or press Enter to default to $($striimInstallPath):"
-if ($striimInstallPathInput -ne "") {
-    $striimInstallPath = $striimInstallPathInput
+# Create downloads folder if it doesn't exist
+if (-not (Test-Path $downloadDir)) {
+    New-Item -ItemType Directory -Force -Path $downloadDir
 }
+
+# Check for agent.conf or startUp.properties to determine node type
+$agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
+$startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
+
+if (Test-Path $agentConfPath) {
+    $nodeType = "A"  # Agent
+    Write-Host "Detected Agent environment based on agent.conf"
+} elseif (Test-Path $startUpPropsPath) {
+    $nodeType = "N"  # Node
+    Write-Host "Detected Node environment based on startUp.properties"
+} else {
+    # If neither file is found, ask the user
+    $nodeType = Read-Host "Is this Agent (default) or Node? (Enter 'A' for Agent or 'N' for Node)"
+    if ($nodeType -eq "") { $nodeType = "A" }
+    $nodeType = $nodeType.ToUpper()
+}
+
+# Ask user for Striim install path only if node type couldn't be auto-detected
+if ($nodeType -eq "") {
+    $striimInstallPathInput = Read-Host "Provide Striim install path or press Enter to default to $($striimInstallPath):"
+    if ($striimInstallPathInput -ne "") {
+        $striimInstallPath = $striimInstallPathInput
+    }
+    Write-Host "User set Striim Install Path set to: $striimInstallPath"
+}
+
 Write-Host "Striim Install Path set to: $striimInstallPath"
 
 # Agent-specific checks
@@ -171,34 +192,56 @@ $installedSoftwareList = Get-WmiObject -Class Win32_Product
 
 Write-Host "Checking for installed requirements...Software list gathered."
 
-# Function to check if software is installed and meets version requirement
-function CheckSoftware {
+function CheckAndDownloadSoftware {
     param(
         [string]$softwareName,
-        [string]$requiredVersion
+        [string]$requiredVersion,
+        [string]$downloadUrl
     )
 
     $matchingSoftware = $installedSoftwareList | 
-                        Where-Object { $_.Name -match "$softwareName.*" } # Updated matching logic
+                        Where-Object { 
+                            $_.Name -like "*$softwareName*" 
+                        } 
 
     if ($matchingSoftware) {
         foreach ($software in $matchingSoftware) {
             if ([version]$software.Version -ge [version]$requiredVersion) {
                 Write-Host "$($software.Name) version $($software.Version) found. Meets requirement."
             } else {
-                Write-Host "$($software.Name) version $($software.Version) found, but it's too old. Required version: $requiredVersion. Please upgrade it manually."
+                Write-Host "$($software.Name) version $($software.Version) found, but it's too old."
+                DownloadAndInstallSoftware $softwareName $downloadUrl
             }
         }
     } else {
-        Write-Host "$softwareName not found. Please install it manually."
+        Write-Host "$softwareName not found." 
+        DownloadAndInstallSoftware $softwareName $downloadUrl
+    }
+}
+
+# Function to download and provide instructions for software installation
+function DownloadAndInstallSoftware {
+    param(
+        [string]$softwareName,
+        [string]$downloadUrl
+    )
+
+    $downloadChoice = Read-Host "  Do you want to download and install $softwareName? (Y/N)"
+    if ($downloadChoice.ToUpper() -eq "Y") {
+		[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+		
+        $downloadPath = $downloadDir + "\" + $downloadUrl.Split("/")[-1]
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $downloadPath
+        Write-Host "$softwareName installer downloaded to $downloadPath. Please run it to install."
     }
 }
 
 # Check for Microsoft Visual C++ 2015-2019 Redistributable
-CheckSoftware "Microsoft Visual C\+\+ 20[1][5-9].*Redistributable \(x64\)" "14.28.29914"
+CheckAndDownloadSoftware "Microsoft Visual C++ 2019 X64 Minimum Runtime" "14.28.29914" "https://aka.ms/vs/16/release/14.29.30133/VC_Redist.x64.exe"
 
 # Check for Microsoft OLE DB Driver for SQL Server
-CheckSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0"
+CheckAndDownloadSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0" "https://go.microsoft.com/fwlink/?linkid=2119554"
+
 
 # Check if Striim service is installed
 $runAsService = Read-Host "Plan to run Striim as a service? (Y/N)"
