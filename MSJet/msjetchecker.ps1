@@ -1,6 +1,6 @@
 # Define default values
 $striimInstallPath = Get-Location
-$downloadDir = $striimInstallPath + "\downloads"
+$downloadDir = -join ($striimInstallPath, "\downloads")
 
 # Ask user if this is Agent or Node
 $nodeType = Read-Host "Is this Agent (default) or Node? (Enter 'A' for Agent or 'N' for Node)"
@@ -16,7 +16,7 @@ Write-Host "Striim Install Path set to: $striimInstallPath"
 
 # Agent-specific checks
 if ($nodeType -eq "A") {
-    $agentConfPath = $striimInstallPath + "\conf\agent.conf"
+    $agentConfPath = -join ($striimInstallPath, "\conf\agent.conf")
 
     # Check if agent.conf exists
     if (Test-Path $agentConfPath) {
@@ -42,7 +42,7 @@ if ($nodeType -eq "A") {
 
 # Node-specific checks
 if ($nodeType -eq "N") {
-    $startUpPropsPath = $striimInstallPath + "\conf\startUp.properties"
+    $startUpPropsPath = -join ($striimInstallPath, "\conf\startUp.properties")
 
     # Check if startUp.properties exists
     if (Test-Path $startUpPropsPath) {
@@ -164,29 +164,41 @@ if (Test-Path $sqljdbcAuthDllPath) {
     }
 }
 
-function CheckSoftwareVersion {
+Write-Host "Checking for installed requirements..."
+
+# Get the list of installed software once
+$installedSoftwareList = Get-WmiObject -Class Win32_Product 
+
+Write-Host "Checking for installed requirements...Software list gathered."
+
+# Function to check if software is installed and meets version requirement
+function CheckSoftware {
     param(
         [string]$softwareName,
-        [string]$versionCheckCommand,
         [string]$requiredVersion
     )
 
-    # Check if software is installed and meets version requirement
-    $installedVersion = & $versionCheckCommand 2>&1 | Select-String -Pattern 'version (.*)' | ForEach-Object { $_.Matches.Groups[1].Value }
-	Write-Host "Found: $installedVersion"
-	
-    if ($installedVersion -and ([version]$installedVersion -ge [version]$requiredVersion)) {
-        Write-Host "$softwareName version $installedVersion found. Meets requirement."
+    $matchingSoftware = $installedSoftwareList | 
+                        Where-Object { $_.Name -match "$softwareName.*" } # Updated matching logic
+
+    if ($matchingSoftware) {
+        foreach ($software in $matchingSoftware) {
+            if ([version]$software.Version -ge [version]$requiredVersion) {
+                Write-Host "$($software.Name) version $($software.Version) found. Meets requirement."
+            } else {
+                Write-Host "$($software.Name) version $($software.Version) found, but it's too old. Required version: $requiredVersion. Please upgrade it manually."
+            }
+        }
     } else {
-        Write-Host "$softwareName not found or version is too old. Required version: $requiredVersion. Please install or upgrade it manually."
+        Write-Host "$softwareName not found. Please install it manually."
     }
 }
 
 # Check for Microsoft Visual C++ 2015-2019 Redistributable
-CheckSoftwareVersion "Microsoft Visual C++ 2015-2019 Redistributable (x64)" "reg query 'HKLM\SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64' /v 'Version'" "14.28.29914"
+CheckSoftware "Microsoft Visual C\+\+ 20[1][5-9].*Redistributable \(x64\)" "14.28.29914"
 
 # Check for Microsoft OLE DB Driver for SQL Server
-CheckSoftwareVersion "Microsoft OLE DB Driver for SQL Server" "reg query 'HKLM\SOFTWARE\Microsoft\Microsoft SQL Server\MSOLEDBSQL\CurrentVersion' /v 'Version'" "18.2.3.0"
+CheckSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0"
 
 # Check if Striim service is installed
 $runAsService = Read-Host "Plan to run Striim as a service? (Y/N)"
@@ -264,4 +276,5 @@ if ($runAsService.ToUpper() -eq "Y") {
 			Write-Host $output
 		}
     }
+	Write-Host "Note: If your Striim service is using Integrated Security, you may need to change the user the service runs as."
 }
