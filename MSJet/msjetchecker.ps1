@@ -262,14 +262,17 @@ if (Test-Path $sqljdbcAuthDllPath) {
 $files = @(
     @{
         Name = 'Platform-4.2.0.20.jar'
+	OName = 'Platform_48036_v4.2.0.20_27_Sep_2024.jar'
         Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/Platform_48036_v4.2.0.20_27_Sep_2024.jar'
     },
     @{
         Name = 'MSJet-4.2.0.20.jar'
+	OName = 'MSJet_48036_v4.2.0.20_27_Sep_2024.jar'
         Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSJet_48036_v4.2.0.20_27_Sep_2024.jar'
     },
     @{
         Name = 'SourceCommons-4.2.0.20.jar'
+	OName = 'SourceCommons_48036_v4.2.0.20_27_Sep_2024.jar'
         Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/SourceCommons_48036_v4.2.0.20_27_Sep_2024.jar'
     }
 )
@@ -286,7 +289,7 @@ if ($filesExist -contains $true) {
     if ($response -eq 'y') {
         # Download and replace the files
         $files | ForEach-Object {
-            Invoke-WebRequest $_.Url -OutFile (Join-Path $striimLibPath $_.Name)
+            Invoke-WebRequest $_.Url -OutFile (Join-Path $striimLibPath $_.OName)
             Remove-Item (Join-Path $striimLibPath $_.Name.Replace('_48036', '')) -Force
         }
 
