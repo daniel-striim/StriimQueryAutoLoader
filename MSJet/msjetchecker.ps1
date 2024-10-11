@@ -159,9 +159,9 @@ foreach ($dll in $requiredDlls) {
             }
 
             if ($dll -eq "MSSQLNative.dll") {
-                $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/main/MSJet/MSSQLNative.dll"
+                $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSSQLNative.dll"
             } else {
-                $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/main/MSJet/Dlls.zip"
+                $downloadUrl = "https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/Dlls.zip"
             }
 
 			$finalPath = -join ($striimLibPath, "\Dlls\", $dll)
@@ -258,6 +258,49 @@ if (Test-Path $sqljdbcAuthDllPath) {
     }
 }
 
+# Define the file paths and URLs
+$files = @(
+    @{
+        Name = 'Platform-4.2.0.20.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/Platform_48036_v4.2.0.20_27_Sep_2024.jar'
+    },
+    @{
+        Name = 'MSJet-4.2.0.20.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSJet_48036_v4.2.0.20_27_Sep_2024.jar'
+    },
+    @{
+        Name = 'SourceCommons-4.2.0.20.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/SourceCommons_48036_v4.2.0.20_27_Sep_2024.jar'
+    }
+)
+
+# Check if the files exist in the specified directory
+$filesExist = $files | ForEach-Object {
+    Test-Path (Join-Path $striimLibPath $_.Name)
+}
+
+# If any of the files exist, prompt the user
+if ($filesExist -contains $true) {
+    $response = Read-Host -Prompt "The specified directory contains files that may require patching. Do you want to install the patches? (y/n)"
+
+    if ($response -eq 'y') {
+        # Download and replace the files
+        $files | ForEach-Object {
+            Invoke-WebRequest $_.Url -OutFile (Join-Path $striimLibPath $_.Name)
+            Remove-Item (Join-Path $striimLibPath $_.Name.Replace('_48036', '')) -Force
+        }
+
+        # Download and replace MSSQLNative.dll
+        Invoke-WebRequest 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSSQLNative.dll' -OutFile (Join-Path $striimLibPath 'MSSQLNative.dll')
+
+        Write-Host "Patches installed successfully."
+    } else {
+        Write-Host "Patching skipped."
+    }
+} else {
+    Write-Host "No files found that require patching."
+}
+
 # Check Software Requirements
 Write-Host "[Softwre] Success: Checking for installed requirements..."
 
@@ -324,6 +367,8 @@ CheckAndDownloadSoftware "Microsoft Visual C++ 2019 X64 Minimum Runtime" "14.28.
 
 # Check for Microsoft OLE DB Driver for SQL Server
 CheckAndDownloadSoftware "Microsoft OLE DB Driver for SQL Server" "18.2.3.0" "https://go.microsoft.com/fwlink/?linkid=2119554"
+
+# Check for fixes for 4.2.0.20
 
 # Check if Striim service is installed
 if ($nodeType -eq "A") {
