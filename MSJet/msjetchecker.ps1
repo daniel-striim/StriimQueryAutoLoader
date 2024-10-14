@@ -267,13 +267,18 @@ $files = @(
     },
     @{
         Name = 'MSJet-4.2.0.20.jar'
-	OName = 'MSJet_48036_v4.2.0.20_27_Sep_2024.jar'
-        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSJet_48036_v4.2.0.20_27_Sep_2024.jar'
+	OName = 'MSJet-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSJet-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
     },
     @{
         Name = 'SourceCommons-4.2.0.20.jar'
-	OName = 'SourceCommons_48036_v4.2.0.20_27_Sep_2024.jar'
-        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/SourceCommons_48036_v4.2.0.20_27_Sep_2024.jar'
+	OName = 'SourceCommons-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/SourceCommons-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
+    },
+    @{
+        Name = 'MSSqlReaderCommon-4.2.0.20.jar'
+	OName = 'MSSqlReaderCommon-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
+        Url = 'https://github.com/daniel-striim/StriimQueryAutoLoader/raw/refs/heads/main/MSJet/FixesFor4.2.0.20/MSSqlReaderCommon-DEV-47811_DEV-47579_DEV-48360_DEV-48036_DEV-48136_DEV-48152_v4.2.0.20_11-Oct-2024.jar'
     }
 )
 
