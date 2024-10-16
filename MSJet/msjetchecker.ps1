@@ -408,9 +408,9 @@ if (Get-Service $serviceName -ErrorAction SilentlyContinue) {
 
 		if (-not (Test-Path $serviceConfigFolder)) {
 			# Find Striim version
-			$platformJar = Get-ChildItem $striimInstallPath\lib -Filter "Platform-*.jar" | Select-Object -First 1
+			$platformJar = Get-ChildItem $striimInstallPath\lib -Filter "DatabaseReader-*.jar" | Select-Object -First 1
 			if ($platformJar) {
-				$versionMatch = $platformJar.Name -match "Platform-(.*)\.jar"
+				$versionMatch = $platformJar.Name -match "DatabaseReader-(.*)\.jar"
 				if ($versionMatch) {
 					$striimVersion = $matches[1]
 
